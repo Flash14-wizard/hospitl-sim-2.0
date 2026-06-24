@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioSim: Ultimate High-Fidelity ICU & Surgery Console</title>
+    <style>
+        :root { 
+            --bg-main: #04080f; --bg-card: #0d1527; --border: #1e2e4a; --text-accent: #38bdf8;
+            --text-main: #f1f5f9; --text-muted: #64748b; --green: #4ade80; --red: #f87171; --orange: #fb923c;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Consolas', 'Courier New', monospace; }
+        body { background-color: var(--bg-main); color: var(--text-main); padding: 15px; display: flex; flex-direction: column; min-height: 100vh; }
+        
+        /* Master Grid Layout */
+        header { border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .hospital-grid { display: grid; grid-template-columns: 280px 1fr 320px; gap: 15px; flex-grow: 1; }
+        
+        /* Modular Interface Panels */
+        .panel { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 15px; display: flex; flex-direction: column; }
+        .panel-header { font-size: 13px; font-weight: bold; color: var(--text-accent); border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* Buttons & Dynamic Controls */
+        .btn { background: #1e2e4a; border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 4px; cursor: pointer; text-align: left; width: 100%; margin-bottom: 8px; font-size: 11px; }
+        .btn:hover { border-color: var(--text-accent); background: #273b5e; }
+        .btn-active { border-color: var(--text-accent); background: #0284c7; color: #fff; }
+        .btn-danger { border-color: var(--red); color: var(--red); }
+        .btn-danger:hover { background: #7f1d1d; color: #fff; }
+        
+        /* Vitals Monitors Grid */
+        .vitals-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px; }
+        .vital-box { background: #050a14; border: 1px solid var(--border); padding: 10px; border-radius: 4px; text-align: center; }
+        .vital-box h5 { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+        .vital-box p { font-size: 20px; font-weight: bold; color: var(--green); margin-top: 2px; }
+        .critical-monitor p { color: var(--red); animation: flash 0.8s infinite alternate; }
+        @keyframes flash { from { opacity: 1; } to { opacity: 0.2; } }
+        
+        /* Micro Display Monitors */
+        .terminal-log { background: #050a14; border: 1px solid var(--border); border-radius: 4px; padding: 10px; height: 180px; overflow-y: auto; font-size: 12px; line-height: 1.5; color: #cbd5e1; }
+        .log-entry { margin-bottom: 6px; border-bottom: 1px solid #111b2d; padding-bottom: 4px; }
+        
+        /* Resource Display Framework */
+        .resource-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; }
+        .resource-val { font-weight: bold; color: var(--green); }
+        .tab-frame { display: flex; flex-direction: column; gap: 12px; flex-grow: 1; }
+        .hidden { display: none !important; }
+        
+        /* ICU Organ Systems Status Grid */
+        .organ-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .organ-badge { background: #111b2d; border: 1px solid var(--border); border-radius: 4px; padding: 6px; text-align: center; font-size: 10px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1 style="font-size: 18px; color: #fff;">🏥 BioSim: Master ICU & Surgical Fellowship System</h1>
+            <p style="color: var(--text-muted); font-size: 11px;">High-Acuity Training Engine for Postgraduate Residency Qualification</p>
+        </div>
+        <div style="font-size: 12px; text-align: right;">
+            <div>FACILITY STATUS: <span id="clock" style="color: var(--text-accent);">14:32:00</span></div>
+            <div>ICU OCCUPANCY: <span id="icu-ratio" style="color: var(--orange);">0 / 4 Beds Occupied</span></div>
+        </div>
+    </header>
+
+    <div class="hospital-grid">
+        
+        <!-- SIDEBAR 1: MEDICAL DEPARTMENTS & ICU BED ALLOCATION MAP -->
+        <aside class="panel">
+            <div class="panel-header">Clinical Workspaces</div>
+            <button class="btn btn-active" id="tab-triage-btn" onclick="setView('triage')">📥 ER Triage Desk (<span id="queue-count">0</span>)</button>
+            <button class="btn" id="tab-treatment-btn" onclick="setView('treatment')">🩺 Operating Theatre (OR)</button>
+            <button class="btn" id="tab-icu-btn" onclick="setView('icu')">🛌 Intensive Care Unit (ICU)</button>
+            <button class="btn" id="tab-lab-btn" onclick="setView('labs')">🔬 Automated Testing & Labs</button>
+            
+            <div class="panel-header" style="margin-top: 15px;">ICU Bed Tracker Map</div>
+            <div id="icu-beds-matrix" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:10px;">
+                <!-- Generated inside JavaScript runtime loops -->
+            </div>
+        </aside>
+        
+        <!-- MAIN PANEL: HIGH ACUITY TREATMENT & RESUSCITATION CONSOLE -->
+        <main class="panel" style="background-color: #0e192c;">
+            
+            <!-- VIEW 1: ER ADMISSIONS TRIAGE -->
+            <div id="frame-triage" class="tab-frame">
+                <div class="panel-header">Emergency Intake / Incoming Ambulance Registry</div>
+                <div class="terminal-log" id="triage-list" style="height: 320px;"></div>
+                <p style="font-size: 11px; color: var(--text-muted);">Review patient clinical presentations and transfer acute cases to the Operating Theatre or direct ICU beds.</p>
+            </div>
+
+            <!-- VIEW 2: HIGH-ACUITY SURGERY INTERVENTIONS -->
+            <div id="frame-treatment" class="tab-frame hidden">
+                <div class="panel-header" id="treatment-patient-title">No Active Patient In Theatre</div>
+                
+                <div class="vitals-grid">
+                    <div class="vital-box" id="m-hr"><h5>Heart Rate</h5><p id="v-hr">--</p></div>
+                    <div class="vital-box" id="m-bp"><h5>Blood Pressure</h5><p id="v-bp">--</p></div>
+                    <div class="vital-box" id="m-spo2"><h5>Oxygen Saturation</h5><p id="v-spo2">--</p></div>
+                    <div class="vital-box" id="m-temp"><h5>Arterial pH</h5><p id="v-temp">--</p></div>
+                </div>
+
+                <div class="panel-header" style="font-size: 11px; margin-bottom: 2px;">Operative Field Telemetry & Pathophysiology Log</div>
+                <div class="terminal-log" id="case-narrative-log" style="height: 120px;"></div>
+                
+                <div class="panel-header" style="font-size: 11px; margin-bottom: 2px; margin-top: 5px;">Surgical Interventions Matrix</div>
+                <div id="action-controls-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;"></div>
+            </div>
+
+            <!-- VIEW 3: LIFE SUPPORT MECHANICAL INTENSIVE CARE WING -->
+            <div id="frame-icu" class="tab-frame hidden">
+                <div class="panel-header">ICU Active Life-Support Bay</div>
+                <div id="icu-patient-focused-view" style="display: flex; flex-direction: column; gap: 10px;">
+                    <p style="color: var(--text-muted); font-size:12px;">Select an allocated active bed mapping on the left panel to inspect ICU organ systems and adjust ventilator parameters.</p>
+                </div>
+            </div>
+
+            <!-- VIEW 4: DIAGNOSTIC TESTING & ARTERIAL GAS TRACKING -->
+            <div id="frame-labs" class="tab-frame hidden">
+                <div class="panel-header">STAT Laboratory Panels Engine</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                    <button class="btn" onclick="orderTest('cbc')">Order STAT Complete Blood Count (CBC)</button>
+                    <button class="btn" onclick="orderTest('abg')">Order Full Arterial Blood Gas (ABG)</button>
+                </div>
+                <div class="panel-header" style="font-size: 11px; margin-top: 10px; margin-bottom: 2px;">Lab Telemetry Terminal Output</div>
+                <div class="terminal-log" id="lab-results-log" style="height: 220px;"></div>
+            </div>
+
+        </main>
+        
+        <!-- SIDEBAR 2: SYSTEMS INFRASTRUCTURE MONITOR & LOGISTICS LEDGER -->
+        <aside class="panel">
+            <div class="panel-header">Hospital Asset Inventory</div>
+            <div class="resource-row"><span>Operating Funds:</span><span class="resource-val" id="hud-cash">$250,000</span></div>
+            <div class="resource-row"><span>O-Neg Blood Reserves:</span><span class="resource-val" id="hud-blood">16 Units</span></div>
+            <div class="resource-row"><span>ICU Mechanical Vents:</span><span class="resource-val" id="hud-vents">4 Units</span></div>
+            <div class="resource-row"><span>Available ICU Beds:</span><span class="resource-val" id="hud-beds">4 / 4 Free</span></div>
+            
+            <button class="btn" style="margin-top:10px; border-color:var(--orange); color:var(--orange);" onclick="buyBloodLogistics()">Procure Emergency Blood Transfusion Packs (-$500)</button>
+
+            <div class="panel-header" style="margin-top: 15px;">Clinical Residency Audit Ledger</div>
+            <div class="terminal-log" id="system-audit-log" style="flex-grow: 1; height: auto; font-size: 11px;"></div>
+        </aside>
+
+    </div>
+
+<script>
+// --- HOSPITAL CORE SYSTEM DATABASE ---
+let activeView = 'triage';
+let hospitalCash = 250000;
+let bloodBank = 16;
+let availableVents = 4;
